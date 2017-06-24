@@ -3,7 +3,6 @@
  */
 package org.jphysics;
 
-import org.jphysics.api.Force;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -13,16 +12,23 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import org.apache.commons.collections4.Closure;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.IterableUtils;
+import org.apache.commons.collections4.Predicate;
 import org.jphysics.api.ContactListener;
 import org.jphysics.api.SimpleContactListener;
 import org.jphysics.api.ContactResolver;
 import org.jphysics.projectile.Projectile;
 import org.jphysics.api.ControllableObject;
 import org.jphysics.api.ControllerResolver;
+import org.jphysics.api.DefaultControllerResolver;
+import org.jphysics.api.DefaultExplosionResolver;
 import org.jphysics.api.GameObject;
 import org.jphysics.api.SelfOperatedObject;
 import org.jphysics.api.PhysicObject;
 import org.jphysics.api.ExplosionResolver;
+import org.jphysics.api.Force;
 import org.jphysics.api.SimpleContactResolver;
 import org.jphysics.math.Vector2f;
 
@@ -34,14 +40,14 @@ import org.jphysics.math.Vector2f;
  */
 public class Engine {
 
-    private final Queue<PhysicObject> actors = new ConcurrentLinkedQueue<>();
-    private final Map<PhysicObject, ObjectController> controllRef = new HashMap<>();
-    private final Map<PhysicObject, ProjectileInfo> projectileRef = new HashMap<>();
+    private final Queue<PhysicObject> actors = new ConcurrentLinkedQueue<PhysicObject>();
+    private final Map<PhysicObject, ObjectController> controllRef = new HashMap<PhysicObject, ObjectController>();
+    private final Map<PhysicObject, ProjectileInfo> projectileRef = new HashMap<PhysicObject, ProjectileInfo>();
 
-    private final Map<Projectile, Long> projectiles = new ConcurrentHashMap<>();
-    private final Queue<GameObject> deadObjects = new ConcurrentLinkedQueue<>();
+    private final Map<Projectile, Long> projectiles = new ConcurrentHashMap<Projectile, Long>();
+    private final Queue<GameObject> deadObjects = new ConcurrentLinkedQueue<GameObject>();
 
-    private final List<Force> forces = new ArrayList<>();
+    private final List<Force> forces = new ArrayList<Force>();
 
     private final float width;
     private final float height;
@@ -51,8 +57,8 @@ public class Engine {
     // Updated every frame.
     private float deltaTime;
 
-    private ExplosionResolver explosionResolver = ExplosionResolver.getDefault();
-    private ControllerResolver controllerResolver = ControllerResolver.getDefault();
+    private ExplosionResolver explosionResolver = new DefaultExplosionResolver();
+    private ControllerResolver controllerResolver = new DefaultControllerResolver();
     private ContactResolver contactResolver = new SimpleContactResolver();
     private ContactListener contactListener = new SimpleContactListener();
 
@@ -105,7 +111,7 @@ public class Engine {
     }
 
     public List<PhysicObject> getActors() {
-        return new ArrayList<>(actors);
+        return new ArrayList<PhysicObject>(actors);
     }
 
     public List<PhysicObject> getVisibleActors(Vector2f center, Float viewSize) {
@@ -115,7 +121,7 @@ public class Engine {
 
         viewSize = viewSize * 1.3f; //add 30% to view
 
-        final List<PhysicObject> list = new ArrayList<>();
+        final List<PhysicObject> list = new ArrayList<PhysicObject>();
 
         for (PhysicObject obj : actors) {
             if (obj.getPosition().distance(center) < viewSize) {
@@ -129,15 +135,15 @@ public class Engine {
 
     public PhysicObject getClosestActor(Vector2f center, Float viewSize, Class<? extends PhysicObject> type) {
 
-        final List<Class<? extends PhysicObject>> allowedTypes = new ArrayList<>(2);
+        final List<Class<? extends PhysicObject>> allowedTypes = new ArrayList<Class<? extends PhysicObject>>(2);
         allowedTypes.add(type);
 
-        return getClosestActor(center, viewSize, allowedTypes, new ArrayList<>());
+        return getClosestActor(center, viewSize, allowedTypes, new ArrayList<PhysicObject>());
     }
 
     public PhysicObject getClosestActor(Vector2f center, Float viewSize, Class<? extends PhysicObject>... allowedTypes) {
         List<Class<? extends PhysicObject>> list = Arrays.asList(allowedTypes);
-        return getClosestActor(center, viewSize, list, new ArrayList<>());
+        return getClosestActor(center, viewSize, list, new ArrayList<PhysicObject>());
     }
 
     public PhysicObject getClosestActor(Vector2f center, Float viewSize, List<Class<? extends PhysicObject>> allowedTypes, List<PhysicObject> ignored) {
@@ -146,7 +152,7 @@ public class Engine {
         }
 
         if (allowedTypes == null) {
-            allowedTypes = new ArrayList<>(0);
+            allowedTypes = new ArrayList<Class<? extends PhysicObject>>(0);
         }
 
         PhysicObject closest = null;
@@ -185,11 +191,11 @@ public class Engine {
         }
     }
 
-    public void calculate(float deltaTime) {
+    public void calculate(final float deltaTime) {
         this.deltaTime = deltaTime;
         removeDeadObjects();
 
-        final List<PhysicObject> fullList = new ArrayList<>();
+        final List<PhysicObject> fullList = new ArrayList<PhysicObject>();
 
         discoverActors(fullList, actors);
 
@@ -286,13 +292,23 @@ public class Engine {
                 obj.setVelocity(vel);
             }
         }
-
-        forces.stream().map((ex) -> {
-            ex.update(deltaTime);
-            return ex;
-        }).filter((ex) -> (!ex.isAlive())).forEach((ex) -> {
-            deadObjects.add(ex);
+        
+        IterableUtils.forEach(forces, new Closure<Force>() {
+            @Override
+            public void execute(Force input) {
+                input.update(deltaTime);
+            }
         });
+        
+        final List<Force> filteredForces = new ArrayList<Force>();
+        CollectionUtils.filter(filteredForces, new Predicate<Force>() {
+            @Override
+            public boolean evaluate(Force object) {
+                return !object.isAlive();
+            }
+        });
+        
+        deadObjects.addAll(filteredForces);
 
     }
 

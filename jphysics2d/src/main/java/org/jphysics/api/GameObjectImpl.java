@@ -6,6 +6,10 @@ package org.jphysics.api;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import org.apache.commons.collections4.Closure;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.IterableUtils;
+import org.apache.commons.collections4.Predicate;
 import org.jphysics.math.Vector2f;
 import org.jphysics.steering.Steering;
 
@@ -15,7 +19,7 @@ import org.jphysics.steering.Steering;
  * @email luis.c.boch@gmail.com
  * @since Jul 31, 2016
  */
-public abstract class GameObjectImpl implements PhysicObject {
+public abstract class GameObjectImpl extends BasicObjectImpl implements PhysicObject {
 
     private final float radius;
     private final float mass;
@@ -25,7 +29,7 @@ public abstract class GameObjectImpl implements PhysicObject {
     private final Vector2f position = new Vector2f();
     private final Vector2f velocity = new Vector2f();
     private final Vector2f direction = new Vector2f();
-    private final Vector2f scale = new Vector2f();
+    private final Vector2f scale = new Vector2f(1, 1);
     protected Vector2f lastWorldPos = new Vector2f();
     private Vector2f pivot = new Vector2f(0f, 0f);
 
@@ -258,20 +262,33 @@ public abstract class GameObjectImpl implements PhysicObject {
             if (c == null) {
                 return false;
             }
-
-            c.stream().filter((a) -> (a != null)).forEach((a) -> {
-                a.setParent(_instance);
+            
+            CollectionUtils.filter(c, new Predicate<PhysicObject>() {
+                @Override
+                public boolean evaluate(PhysicObject t) {
+                    return t != null;
+                }
             });
+            
+            IterableUtils.forEach(c, new Closure<PhysicObject>() {
+                @Override
+                public void execute(PhysicObject input) {
+                    input.setParent(_instance);
+                }
+            });
+            
             return super.addAll(c);
         }
 
         @Override
         public void clear() {
-
-            this.forEach((a) -> {
-                a.setParent(null);
+            IterableUtils.forEach(this, new Closure<PhysicObject>() {
+                @Override
+                public void execute(PhysicObject input) {
+                    input.setParent(null);
+                }
             });
-
+            
             super.clear();
         }
 
@@ -295,11 +312,21 @@ public abstract class GameObjectImpl implements PhysicObject {
             if (c == null) {
                 return false;
             }
-
-            c.stream().filter((o) -> (o instanceof PhysicObject)).forEach((o) -> {
-                ((PhysicObject) o).setParent(null);
+            
+            CollectionUtils.filter(c, new Predicate<Object>() {
+                @Override
+                public boolean evaluate(Object object) {
+                    return object instanceof PhysicObject;
+                }
             });
-
+            
+            IterableUtils.forEach(c, new Closure<Object>() {
+                @Override
+                public void execute(Object input) {
+                    ((PhysicObject) input).setParent(null);
+                }
+            });
+            
             return super.removeAll(c);
         }
 

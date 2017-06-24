@@ -5,11 +5,13 @@
  */
 package org.jphysics.api;
 
-/**
- *
- * @author luis
- */
-public interface TemporaryForce extends Force{
+import org.jphysics.math.Vector2f;
+
+public class DefaultExplosionResolver implements ExplosionResolver {
+
     @Override
-    boolean isAlive();
+    public Force create(PhysicObject... ref) {
+        return new SimpleTemporaryForce();
+    }
+
 }

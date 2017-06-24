@@ -12,46 +12,5 @@ import org.jphysics.math.Vector2f;
  * @author luis
  */
 public interface ExplosionResolver {
-
     Force create(PhysicObject... ref);
-
-    public static ExplosionResolver getDefault() {
-        return new ExplosionResolver() {
-            @Override
-            public Force create(PhysicObject... ref) {
-                return new TemporaryForce() {
-                    @Override
-                    public Vector2f getPosition() {
-                        return new Vector2f();
-                    }
-
-                    @Override
-                    public String toString() {
-                        return "Empty Explosion";
-                    }
-
-                    @Override
-                    public boolean isAlive() {
-                        return false;
-                    }
-
-                    @Override
-                    public Force update(float deltaTime) {
-                        return this;
-                    }
-
-
-                    @Override
-                    public float getMass() {
-                        return 0f;
-                    }
-
-                    @Override
-                    public GameObject setPosition(Vector2f pos) {
-                        return this;
-                    }
-                };
-            }
-        };
-    }
 }

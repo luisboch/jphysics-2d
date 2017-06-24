@@ -11,7 +11,7 @@ import org.jphysics.math.Vector2f;
 
 public class SimpleContactResolver implements ContactResolver {
 
-    private final List<Result> resolved = new ArrayList<>();
+    private final List<Result> resolved = new ArrayList<Result>();
 
     @Override
     public void clear() {
@@ -19,9 +19,13 @@ public class SimpleContactResolver implements ContactResolver {
     }
 
     public boolean isResolved(PhysicObject obj1, PhysicObject obj2) {
-        return resolved.stream().anyMatch((r) -> ((r.reference1.equals(obj1) && r.reference2.equals(obj2))
-                || (r.reference2.equals(obj1) && r.reference1.equals(obj2))));
-
+        for(Result r:resolved ){
+            if( (r.reference1.equals(obj1) && r.reference2.equals(obj2)) || (r.reference1.equals(obj2) && r.reference2.equals(obj1))){
+                return true;
+            }
+        }
+        
+        return false;
     }
 
     @Override

@@ -25,7 +25,7 @@ import org.jphysics.math.Vector2f;
  */
 public class WeightSteeringStrategy extends Steering<WeightSteeringStrategy> {
 
-    private final List<SteeringValue> behaviors = new ArrayList<>();
+    private final List<SteeringValue> behaviors = new ArrayList<SteeringValue>();
 
     /**
      *
@@ -58,7 +58,7 @@ public class WeightSteeringStrategy extends Steering<WeightSteeringStrategy> {
     public Vector2f _calculate() {
         int totalImpact = 0;
         final Vector2f result = new Vector2f(0, 0);
-        final List<SteeringValue> calculated = new ArrayList<>();
+        final List<SteeringValue> calculated = new ArrayList<SteeringValue>();
 
         for (SteeringValue val : behaviors) {
             if (val.impact > 0) {

@@ -11,13 +11,6 @@ package org.jphysics.api;
  */
 public interface BasicObject {
 
-    default <E extends GameObject> boolean in(E... objs) {
-        for (E e : objs) {
-            if (this.equals(e)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
+    <E extends BasicObjectImpl> boolean in(E... objs);
+    
 }

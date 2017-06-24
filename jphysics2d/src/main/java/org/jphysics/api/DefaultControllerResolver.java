@@ -9,11 +9,9 @@ import org.jphysics.Engine;
 import org.jphysics.ObjectController;
 import org.jphysics.math.Vector2f;
 
-/**
- *
- * @author luis
- */
-public interface ControllerResolver {
-    Vector2f calculate(Engine engine, ControllableObject obj, ObjectController controller);
-    
+public class DefaultControllerResolver implements ControllerResolver {
+    @Override
+    public Vector2f calculate(Engine engine, ControllableObject obj, ObjectController controller) {
+        return new Vector2f();
+    }
 }
