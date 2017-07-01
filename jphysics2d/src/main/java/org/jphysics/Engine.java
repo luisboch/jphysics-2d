@@ -10,7 +10,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import org.apache.commons.collections4.Closure;
 import org.apache.commons.collections4.CollectionUtils;
@@ -42,17 +41,15 @@ public class Engine {
 
     private final Queue<PhysicObject> actors = new ConcurrentLinkedQueue<PhysicObject>();
     private final Map<PhysicObject, ObjectController> controllRef = new HashMap<PhysicObject, ObjectController>();
-    private final Map<PhysicObject, ProjectileInfo> projectileRef = new HashMap<PhysicObject, ProjectileInfo>();
 
-    private final Map<Projectile, Long> projectiles = new ConcurrentHashMap<Projectile, Long>();
     private final Queue<GameObject> deadObjects = new ConcurrentLinkedQueue<GameObject>();
 
     private final List<Force> forces = new ArrayList<Force>();
 
     private final float width;
     private final float height;
-    private final float depth;
     private boolean avoidOjectsLeaveMap = false;
+    private boolean mapIsLoop = false;
 
     // Updated every frame.
     private float deltaTime;
@@ -61,29 +58,53 @@ public class Engine {
     private ControllerResolver controllerResolver = new DefaultControllerResolver();
     private ContactResolver contactResolver = new SimpleContactResolver();
     private ContactListener contactListener = new SimpleContactListener();
+    private ProjectileResolver projectileResolver = new SimpleProjectileResolver() {
+        @Override
+        protected Projectile _create(PhysicObject creator, Class<? extends Projectile> type) {
+            try {
+                return type.newInstance();
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
+            }
+        }
+    };
 
     /**
      *
      * @param width in metters
      * @param height in metters
-     * @param depth in metters (z)
      */
-    public Engine(float width, float height, float depth) {
+    public Engine(float width, float height) {
         this.width = width;
         this.height = height;
-        this.depth = depth;
+    }
+
+    public ObjectController add(ControllableObject actor) {
+        ObjectController act = new ObjectController(actor);
+        actor.setController(act);
+        _add(actor);
+        controllRef.put(actor, act);
+        return act;
     }
 
     public Engine add(PhysicObject actor) {
-            final Vector2f pos = actor.getPosition();
-        
-            if(pos.x == 0f && pos.y == 0f){
+        return _add(actor);
+    }
+
+    public Engine remove(PhysicObject actor) {
+        deadObjects.add(actor);
+        return this;
+    }
+
+    public Engine _add(PhysicObject actor) {
+        final Vector2f pos = actor.getPosition();
+
+        if (pos.x == 0f && pos.y == 0f) {
             pos.x = width * 0.5f;
             pos.y = height * 0.5f;
         }
-        
-        if (avoidOjectsLeaveMap) {
 
+        if (avoidOjectsLeaveMap) {
 
             if (pos.y < 0) {
                 pos.y = 0;
@@ -223,7 +244,7 @@ public class Engine {
                 Projectile pro = (Projectile) obj;
                 if (pro.canExplodeNow(false)) {
                     createExplosion(pro);
-                } else if (System.currentTimeMillis() - projectiles.get(pro) > pro.getLifeTime()) {
+                } else if (projectileResolver.isDead(pro)) {
                     if (pro.canExplodeNow(true)) {
                         createExplosion(pro);
                     } else {
@@ -263,51 +284,61 @@ public class Engine {
             }
 
             obj.setVelocity(newVelocity);
-
             if (obj.getVelocity().length() > 0f) {
                 final Vector2f velSec = new Vector2f(obj.getVelocity()).mul(deltaTime);
                 obj.setPosition(obj.getPosition().add(velSec));
             }
 
-            if (obj instanceof ControllableObject && avoidOjectsLeaveMap) {
-
-                final Vector2f vel = obj.getVelocity();
-
-                if (obj.getPosition().x > width && obj.getVelocity().x > 0) {
-                    vel.x = -vel.x;
+            if (avoidOjectsLeaveMap) {
+                if (!mapIsLoop) {
+                    final Vector2f vel = obj.getVelocity();
+                    if (obj.getPosition().x > width && obj.getVelocity().x > 0) {
+                        vel.x = -vel.x;
+                    }
+                    if (obj.getPosition().x < 0 && obj.getVelocity().x < 0) {
+                        vel.x = -vel.x;
+                    }
+                    if (obj.getPosition().y > height && obj.getVelocity().y > 0) {
+                        vel.y = -vel.y;
+                    }
+                    if (obj.getPosition().y < 0 && obj.getVelocity().y < 0) {
+                        vel.y = -vel.y;
+                    }
+                    obj.setVelocity(vel);
+                } else {
+                    Vector2f pos = obj.getPosition();
+                    
+                    if(pos.x < 0){
+                        pos.x = width;
+                    } else if(pos.x > width){
+                        pos.x = width;
+                    }
+                    
+                    if(pos.y < 0){
+                        pos.y = height;
+                    } else if(pos.y > height){
+                        pos.y = height;
+                    }
+                    
                 }
-
-                if (obj.getPosition().x < 0 && obj.getVelocity().x < 0) {
-                    vel.x = -vel.x;
-                }
-
-                if (obj.getPosition().y > height && obj.getVelocity().y > 0) {
-                    vel.y = -vel.y;
-                }
-
-                if (obj.getPosition().y < 0 && obj.getVelocity().y < 0) {
-                    vel.y = -vel.y;
-                }
-
-                obj.setVelocity(vel);
             }
         }
-        
+
         IterableUtils.forEach(forces, new Closure<Force>() {
             @Override
             public void execute(Force input) {
                 input.update(deltaTime);
             }
         });
-        
-        final List<Force> filteredForces = new ArrayList<Force>();
+
+        final List<Force> filteredForces = new ArrayList<Force>(forces);
         CollectionUtils.filter(filteredForces, new Predicate<Force>() {
             @Override
             public boolean evaluate(Force object) {
                 return !object.isAlive();
             }
         });
-        
+
         deadObjects.addAll(filteredForces);
 
     }
@@ -344,17 +375,6 @@ public class Engine {
 
     }
 
-    public ObjectController create(ControllableObject actor) {
-        ObjectController act = new ObjectController(actor);
-        add(actor);
-        bind(actor, act);
-        return act;
-    }
-
-    private void bind(ControllableObject actor, ObjectController act) {
-        controllRef.put(actor, act);
-    }
-
     private Vector2f calculateControl(ControllableObject obj) {
 
         if (controllRef.containsKey(obj)) {
@@ -365,56 +385,16 @@ public class Engine {
         return new Vector2f();
     }
 
-    public <E extends Projectile> void createProjectile(PhysicObject from, E projectile) {
-
-        Vector2f pos = from.getPosition();
-        pos.add(from.getDirection().normalize().mul(from.getRadius() + projectile.getRadius() + 1));
-        projectile.setPosition(pos);
-        projectile.setDirection(from.getDirection());
-        projectile.setVelocity(from.getDirection().normalize().mul(projectile.getInitialVelocity()));
-        projectiles.put(projectile, System.currentTimeMillis());
-
-        actors.add(projectile);
-    }
-
-    private boolean canPlayerCreateProjectile(ControllableObject from, Class<? extends Projectile> type) {
-        long now = System.currentTimeMillis();
-        final ProjectileInfo nfo;
-
-        if (!projectileRef.containsKey(from)) {
-            nfo = new ProjectileInfo();
-            projectileRef.put(from, nfo);
-        } else {
-            nfo = projectileRef.get(from);
-        }
-
-        if (nfo.usedTypes.containsKey(type)) {
-            final Long lastShot = nfo.usedTypes.get(type);
-
-            if (now - lastShot <= Projectile.getReloadTimeConfig().get(type)) {
-                return false; // User must wait for reload time before add new Projectile...
-            }
-        }
-
-        nfo.usedTypes.put(type, now);
-
-        return true;
-    }
-
     private void removeDeadObjects() {
 
         GameObject obj = null;
 
         while ((obj = deadObjects.poll()) != null) {
 
-            if (obj instanceof Projectile) {
-                projectiles.remove((Projectile) obj);
-            }
-            
             if (obj instanceof Force) {
                 forces.remove((Force) obj);
             }
-            
+
             if (obj instanceof PhysicObject) {
                 actors.remove((PhysicObject) obj);
             }
@@ -444,6 +424,18 @@ public class Engine {
         deadObjects.add(p);
     }
 
+    public void setContactListener(ContactListener contactListener) {
+        this.contactListener = contactListener;
+    }
+
+    public void setContactResolver(ContactResolver contactResolver) {
+        this.contactResolver = contactResolver;
+    }
+
+    public void setProjectileResolver(ProjectileResolver projectileResolver) {
+        this.projectileResolver = projectileResolver;
+    }
+
     private void resolveImpact(PhysicObject ob, List<PhysicObject> actors) {
 
         if (!ob.isAlive()) {
@@ -457,8 +449,21 @@ public class Engine {
                 ContactResolver.Result result = contactResolver.resolve(ob, act);
                 result.getReference1().getPosition().add(result.getResult1());
                 result.getReference2().getPosition().add(result.getResult2());
+                contactListener.contact(ob, act, actors);
             }
         }
+    }
+
+    public ProjectileResolver getProjectileResolver() {
+        return projectileResolver;
+    }
+
+    public float getWidth() {
+        return width;
+    }
+
+    public float getHeight() {
+        return height;
     }
 
 }

@@ -70,6 +70,36 @@ public abstract class GameObjectImpl extends BasicObjectImpl implements PhysicOb
         listActorObject = new ControlList(this);
     }
 
+    public GameObjectImpl(float radius, float mass, Vector2f scale) {
+        this.radius = radius;
+        this.mass = mass;
+        type = _getType();
+        maxVel = 500f;
+        maxForce = 350f;
+        listActorObject = new ControlList(this);
+        this.scale.set(scale);
+    }
+
+    public GameObjectImpl(float radius, float mass, float maxVel, Vector2f scale) {
+        this.radius = radius;
+        this.mass = mass;
+        this.type = _getType();
+        this.maxVel = maxVel;
+        maxForce = 350f;
+        listActorObject = new ControlList(this);
+        this.scale.set(scale);
+    }
+
+    public GameObjectImpl(float radius, float mass, float maxVel, float maxForce, Vector2f scale) {
+        this.radius = radius;
+        this.mass = mass;
+        this.type = _getType();
+        this.maxVel = maxVel;
+        this.maxForce = maxForce;
+        listActorObject = new ControlList(this);
+        this.scale.set(scale);
+    }
+
     protected void tick() {
     }
 
@@ -134,6 +164,7 @@ public abstract class GameObjectImpl extends BasicObjectImpl implements PhysicOb
         return this;
     }
 
+    @Override
     public GameObjectImpl setDirection(Vector2f pos) {
         direction.set(pos);
         return this;
@@ -262,21 +293,21 @@ public abstract class GameObjectImpl extends BasicObjectImpl implements PhysicOb
             if (c == null) {
                 return false;
             }
-            
+
             CollectionUtils.filter(c, new Predicate<PhysicObject>() {
                 @Override
                 public boolean evaluate(PhysicObject t) {
                     return t != null;
                 }
             });
-            
+
             IterableUtils.forEach(c, new Closure<PhysicObject>() {
                 @Override
                 public void execute(PhysicObject input) {
                     input.setParent(_instance);
                 }
             });
-            
+
             return super.addAll(c);
         }
 
@@ -288,7 +319,7 @@ public abstract class GameObjectImpl extends BasicObjectImpl implements PhysicOb
                     input.setParent(null);
                 }
             });
-            
+
             super.clear();
         }
 
@@ -312,21 +343,21 @@ public abstract class GameObjectImpl extends BasicObjectImpl implements PhysicOb
             if (c == null) {
                 return false;
             }
-            
+
             CollectionUtils.filter(c, new Predicate<Object>() {
                 @Override
                 public boolean evaluate(Object object) {
                     return object instanceof PhysicObject;
                 }
             });
-            
+
             IterableUtils.forEach(c, new Closure<Object>() {
                 @Override
                 public void execute(Object input) {
                     ((PhysicObject) input).setParent(null);
                 }
             });
-            
+
             return super.removeAll(c);
         }
 
@@ -335,6 +366,12 @@ public abstract class GameObjectImpl extends BasicObjectImpl implements PhysicOb
     @Override
     public boolean isAlive() {
         return health == -999999 || health > 0;
+    }
+    
+    @Override
+    public GameObjectImpl decreaseLife(){
+        this.health--;
+        return this;
     }
 
     @Override

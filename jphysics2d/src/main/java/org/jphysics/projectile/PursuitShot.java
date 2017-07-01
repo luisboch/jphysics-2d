@@ -23,7 +23,7 @@ public class PursuitShot extends Shot {
 
     
     public PursuitShot(Steering steering, GameObjectImpl from) {
-        super("disasteroids/fire2.png", 5, 3f, 2000, 400, 20f, 1000f, 15000);
+        super(5, 3f, 2000, 400, 20f, 1000f, 15000);
         init(steering, from);
 
     }

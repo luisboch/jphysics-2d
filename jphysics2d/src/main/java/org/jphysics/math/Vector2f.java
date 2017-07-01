@@ -382,4 +382,17 @@ public class Vector2f extends org.joml.Vector2f {
         return super.x();
     }
 
+    public boolean isZero() {
+        return this.x == 0f && this.y == 0f;
+    }
+
+    public static Vector2f fromAngle(float degress) {
+        return new Vector2f(1f, 1f).setAngle(degress).normalize();
+    }
+
+    @Override
+    public String toString() {
+        return toString(NumberFormat.getIntegerInstance());
+    }
+
 }

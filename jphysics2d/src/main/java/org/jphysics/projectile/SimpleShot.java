@@ -16,13 +16,13 @@ public class SimpleShot extends Projectile {
     }
 
     public SimpleShot(Steering steering, GameObjectImpl from) {
-        super("disasteroids/fire.png", 5, 3f, 2000, 400, 20f, 1000f, 15000);
+        super(5, 3f, 2000, 400, 20f, 1000f, 15000);
         init(steering, from);
 
     }
 
-    public SimpleShot(String image, float radius, float mass, float maxVel, float maxForce, float explosionRadius, float explosionForce, int lifeTime) {
-        super(image, radius, mass, maxVel, maxForce, explosionRadius, explosionForce, lifeTime);
+    public SimpleShot(float radius, float mass, float maxVel, float maxForce, float explosionRadius, float explosionForce, int lifeTime) {
+        super(radius, mass, maxVel, maxForce, explosionRadius, explosionForce, lifeTime);
     }
     
     

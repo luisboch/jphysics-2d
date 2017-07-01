@@ -11,6 +11,7 @@ import org.jphysics.ObjectController;
  *
  * @author luis
  */
-public interface ControllableObject extends PhysicObject{
+public interface ControllableObject extends PhysicObject {
     ObjectController getController();
+    void setController(ObjectController controller);
 }

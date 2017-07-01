@@ -14,6 +14,5 @@ import org.jphysics.math.Vector2f;
  * @author luis
  */
 public interface ControllerResolver {
-    Vector2f calculate(Engine engine, ControllableObject obj, ObjectController controller);
-    
+    Vector2f calculate(Engine engine, ControllableObject obj, ObjectController controller); 
 }

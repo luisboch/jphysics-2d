@@ -24,4 +24,6 @@ public interface PhysicObject extends GameObject {
     PhysicObject getParent();
     PhysicObject setParent(PhysicObject obj);
     PhysicObject setVelocity(Vector2f newVelocity);
+    PhysicObject setDirection(Vector2f newDirection);
+    PhysicObject decreaseLife();
 }

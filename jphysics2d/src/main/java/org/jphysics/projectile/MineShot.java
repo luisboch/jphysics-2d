@@ -22,7 +22,7 @@ public class MineShot extends Shot {
 
     
     public MineShot(Steering steering, GameObjectImpl from) {
-        super("disasteroids/big_bomb.png", 5, 3f, 2000, 400, 20f, 1000f, 15000);
+        super(5, 3f, 2000, 400, 20f, 1000f, 15000);
         init(steering, from);
 
     }

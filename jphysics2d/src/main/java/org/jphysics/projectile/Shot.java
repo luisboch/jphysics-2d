@@ -16,8 +16,8 @@ public class Shot extends SimpleShot {
         super(null, null);
     }
 
-    public Shot(String image, float radius, float mass, float maxVel, float maxForce, float explosionRadius, float explosionForce, int lifeTime) {
-        super(image, radius, mass, maxVel, maxForce, explosionRadius, explosionForce, lifeTime);
+    public Shot(float radius, float mass, float maxVel, float maxForce, float explosionRadius, float explosionForce, int lifeTime) {
+        super(radius, mass, maxVel, maxForce, explosionRadius, explosionForce, lifeTime);
     }
 
     
