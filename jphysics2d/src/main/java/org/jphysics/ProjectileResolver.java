@@ -16,6 +16,4 @@ public interface ProjectileResolver {
     boolean canCreateProjectile(Class<? extends Projectile> type, PhysicObject creator);
     
     Projectile create(PhysicObject creator, Class<? extends Projectile> type);
-    
-    boolean isDead(Projectile projectile);
 }

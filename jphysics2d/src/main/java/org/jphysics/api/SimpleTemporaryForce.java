@@ -7,20 +7,15 @@ package org.jphysics.api;
 
 import org.jphysics.math.Vector2f;
 
-
 public class SimpleTemporaryForce extends BasicObjectImpl implements TemporaryForce {
+
     protected boolean isAlive = true;
     protected float mass;
     protected final Vector2f position = new Vector2f();
-    
+
     @Override
     public boolean isAlive() {
         return this.isAlive;
-    }
-
-    @Override
-    public Force update(float deltaTime) {
-        return this;
     }
 
     @Override
@@ -46,4 +41,14 @@ public class SimpleTemporaryForce extends BasicObjectImpl implements TemporaryFo
     public void setMass(float mass) {
         this.mass = mass;
     }
+
+    @Override
+    public float getRadius() {
+        return 0f;
+    }
+
+    @Override
+    public void update(float secs) {
+    }
+
 }

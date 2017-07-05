@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+
 import org.apache.commons.collections4.Closure;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.IterableUtils;
@@ -32,7 +33,6 @@ import org.jphysics.api.SimpleContactResolver;
 import org.jphysics.math.Vector2f;
 
 /**
- *
  * @author Luis Boch
  * @email luis.c.boch@gmail.com
  * @since Jul 31, 2016
@@ -70,7 +70,6 @@ public class Engine {
     };
 
     /**
-     *
      * @param width in metters
      * @param height in metters
      */
@@ -145,7 +144,26 @@ public class Engine {
         final List<PhysicObject> list = new ArrayList<PhysicObject>();
 
         for (PhysicObject obj : actors) {
-            if (obj.getPosition().distance(center) < viewSize) {
+            if ((obj.getPosition().distance(center)) < (viewSize + obj.getRadius())) {
+                list.add(obj);
+            }
+        }
+
+        return list;
+
+    }
+
+    public List<Force> getVisibleForces(Vector2f center, Float viewSize) {
+        if (center == null || viewSize == null) {
+            throw new IllegalArgumentException("All params are required!");
+        }
+
+        viewSize = viewSize * 1.3f; //add 30% to view
+
+        final List<Force> list = new ArrayList<Force>();
+
+        for (Force obj : forces) {
+            if ((obj.getPosition().distance(center)) < (viewSize + obj.getRadius())) {
                 list.add(obj);
             }
         }
@@ -191,6 +209,7 @@ public class Engine {
                 }
             }
         }
+
         return closest;
     }
 
@@ -221,7 +240,9 @@ public class Engine {
         discoverActors(fullList, actors);
 
         for (PhysicObject obj : fullList) {
-
+            
+            obj.update(deltaTime);
+            
             resolveImpact(obj, fullList);
 
             /**
@@ -242,15 +263,10 @@ public class Engine {
              */
             if (obj instanceof Projectile) {
                 Projectile pro = (Projectile) obj;
-                if (pro.canExplodeNow(false)) {
+                if (!pro.isAlive()) {
                     createExplosion(pro);
-                } else if (projectileResolver.isDead(pro)) {
-                    if (pro.canExplodeNow(true)) {
-                        createExplosion(pro);
-                    } else {
-                        deadObjects.add(obj);
-                    }
-                    continue;
+                } else if (pro.isTimedOut()) {
+                    createExplosion(pro);
                 }
             } else if (obj instanceof Force) {
                 continue;
@@ -307,19 +323,19 @@ public class Engine {
                     obj.setVelocity(vel);
                 } else {
                     Vector2f pos = obj.getPosition();
-                    
-                    if(pos.x < 0){
+
+                    if (pos.x < 0) {
                         pos.x = width;
-                    } else if(pos.x > width){
+                    } else if (pos.x > width) {
                         pos.x = width;
                     }
-                    
-                    if(pos.y < 0){
+
+                    if (pos.y < 0) {
                         pos.y = height;
-                    } else if(pos.y > height){
+                    } else if (pos.y > height) {
                         pos.y = height;
                     }
-                    
+
                 }
             }
         }
@@ -339,7 +355,16 @@ public class Engine {
             }
         });
 
+        final List<PhysicObject> filteredActors = new ArrayList<PhysicObject>(fullList);
+        CollectionUtils.filter(filteredActors, new Predicate<PhysicObject>() {
+            @Override
+            public boolean evaluate(PhysicObject object) {
+                return !object.isAlive();
+            }
+        });
+
         deadObjects.addAll(filteredForces);
+        deadObjects.addAll(filteredActors);
 
     }
 
@@ -420,8 +445,11 @@ public class Engine {
 
     private void createExplosion(Projectile p) {
         final Force exp = explosionResolver.create(p);
-        forces.add(exp);
         deadObjects.add(p);
+
+        if (exp != null) {
+            forces.add(exp);
+        }
     }
 
     public void setContactListener(ContactListener contactListener) {

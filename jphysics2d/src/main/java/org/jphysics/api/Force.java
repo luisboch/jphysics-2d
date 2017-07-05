@@ -12,5 +12,5 @@ import org.joml.Vector3f;
  * @author luis
  */
 public interface Force extends GameObject{
-    Force update(float deltaTime);
+    float getRadius();
 }

@@ -380,4 +380,8 @@ public abstract class GameObjectImpl extends BasicObjectImpl implements PhysicOb
         return this;
     }
 
+    @Override
+    public void update(float secs) {
+    }
+
 }

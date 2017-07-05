@@ -17,6 +17,8 @@ public interface GameObject extends BasicObject {
     float getMass();
     Vector2f getPosition();
     GameObject setPosition(Vector2f pos);
+    
+    void update(float secs);
 
     boolean isAlive();
     

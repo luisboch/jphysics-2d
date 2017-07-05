@@ -20,7 +20,6 @@ public abstract class SimpleProjectileResolver implements ProjectileResolver {
 
     private final Map<Class<? extends Projectile>, Long> timeToFire = new ConcurrentHashMap<Class<? extends Projectile>, Long>();
     private final Map<PhysicObject, Long> timeFired = new HashMap<PhysicObject, Long>();
-    private final Map<Projectile, Long> lifeReference = new HashMap<Projectile, Long>();
 
     @Override
     public boolean canCreateProjectile(Class<? extends Projectile> type, PhysicObject creator) {
@@ -57,9 +56,8 @@ public abstract class SimpleProjectileResolver implements ProjectileResolver {
 
             projectile.setDirection(dir);
             projectile.setPosition(creator.getPosition().add(dir.mul((creator.getRadius() + projectile.getRadius()) + 5f)));
-            projectile.setVelocity(dir.normalize().mul(projectile.getInitialVelocity() + creator.getVelocity().length()));
+            projectile.setVelocity(dir.normalize().mul(projectile.getInitialVelocity()).add(creator.getVelocity()));
             long created = System.currentTimeMillis();
-            lifeReference.put(projectile, created);
             timeFired.put(creator, created);
 
             return projectile;
@@ -72,17 +70,6 @@ public abstract class SimpleProjectileResolver implements ProjectileResolver {
 
     public void setReloadTime(long reload, Class<? extends Projectile> type) {
         timeToFire.put(type, reload);
-    }
-
-    @Override
-    public boolean isDead(Projectile projectile) {
-
-        boolean isDead = (System.currentTimeMillis() - lifeReference.get(projectile)) > projectile.getLifeTime();
-        if (isDead) {
-            lifeReference.remove(projectile);
-        }
-
-        return isDead;
     }
 
     protected abstract Projectile _create(PhysicObject creator, Class<? extends Projectile> type);
