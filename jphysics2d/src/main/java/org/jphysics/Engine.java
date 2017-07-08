@@ -3,9 +3,11 @@
  */
 package org.jphysics;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,20 +18,8 @@ import org.apache.commons.collections4.Closure;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.IterableUtils;
 import org.apache.commons.collections4.Predicate;
-import org.jphysics.api.ContactListener;
-import org.jphysics.api.SimpleContactListener;
-import org.jphysics.api.ContactResolver;
+import org.jphysics.api.*;
 import org.jphysics.projectile.Projectile;
-import org.jphysics.api.ControllableObject;
-import org.jphysics.api.ControllerResolver;
-import org.jphysics.api.DefaultControllerResolver;
-import org.jphysics.api.DefaultExplosionResolver;
-import org.jphysics.api.GameObject;
-import org.jphysics.api.SelfOperatedObject;
-import org.jphysics.api.PhysicObject;
-import org.jphysics.api.ExplosionResolver;
-import org.jphysics.api.Force;
-import org.jphysics.api.SimpleContactResolver;
 import org.jphysics.math.Vector2f;
 
 /**
@@ -37,19 +27,20 @@ import org.jphysics.math.Vector2f;
  * @email luis.c.boch@gmail.com
  * @since Jul 31, 2016
  */
-public class Engine {
+public class Engine implements Serializable {
 
-    private final Queue<PhysicObject> actors = new ConcurrentLinkedQueue<PhysicObject>();
-    private final Map<PhysicObject, ObjectController> controllRef = new HashMap<PhysicObject, ObjectController>();
+    private Queue<PhysicObject> actors = new ConcurrentLinkedQueue<PhysicObject>();
+    private Map<PhysicObject, ObjectController> controllRef = new HashMap<PhysicObject, ObjectController>();
 
-    private final Queue<GameObject> deadObjects = new ConcurrentLinkedQueue<GameObject>();
+    private Queue<GameObject> deadObjects = new ConcurrentLinkedQueue<GameObject>();
 
-    private final List<Force> forces = new ArrayList<Force>();
+    private List<Force> forces = new ArrayList<Force>();
 
-    private final float width;
-    private final float height;
+    private float width;
+    private float height;
     private boolean avoidOjectsLeaveMap = false;
     private boolean mapIsLoop = false;
+    private List<Action> actions = new ArrayList<Action>();
 
     // Updated every frame.
     private float deltaTime;
@@ -68,6 +59,10 @@ public class Engine {
             }
         }
     };
+
+    public Engine() {
+
+    }
 
     /**
      * @param width in metters
@@ -88,6 +83,16 @@ public class Engine {
 
     public Engine add(PhysicObject actor) {
         return _add(actor);
+    }
+
+    public Engine addAction(Runnable action) {
+        this.actions.add(new Action(System.currentTimeMillis(), action));
+        return this;
+    }
+
+    public Engine addAction(Runnable action, long msToExecute) {
+        this.actions.add(new Action(System.currentTimeMillis() + msToExecute, action));
+        return this;
     }
 
     public Engine remove(PhysicObject actor) {
@@ -172,29 +177,55 @@ public class Engine {
 
     }
 
-    public PhysicObject getClosestActor(Vector2f center, Float viewSize, Class<? extends PhysicObject> type) {
+    public  <E extends PhysicObject> E getClosestActor(Vector2f center, Float viewSize, Class<E> type) {
 
-        final List<Class<? extends PhysicObject>> allowedTypes = new ArrayList<Class<? extends PhysicObject>>(2);
+        final List<Class<E>> allowedTypes = new ArrayList<Class<E>>(1);
         allowedTypes.add(type);
 
         return getClosestActor(center, viewSize, allowedTypes, new ArrayList<PhysicObject>());
     }
 
-    public PhysicObject getClosestActor(Vector2f center, Float viewSize, Class<? extends PhysicObject>... allowedTypes) {
-        List<Class<? extends PhysicObject>> list = Arrays.asList(allowedTypes);
+    public <E extends PhysicObject> E getClosestActor(Vector2f center, Float viewSize, Class<E>... allowedTypes) {
+        List<Class<E>> list = Arrays.asList(allowedTypes);
         return getClosestActor(center, viewSize, list, new ArrayList<PhysicObject>());
     }
 
-    public PhysicObject getClosestActor(Vector2f center, Float viewSize, List<Class<? extends PhysicObject>> allowedTypes, List<PhysicObject> ignored) {
+    public <E extends PhysicObject>  List<E> getActorsByType(Class<E> filter) {
+        List<Class<E>> list = new ArrayList<Class<E>>();
+        list.add(filter);
+        return getActorsByType(list, Collections.EMPTY_LIST);
+
+    }
+
+    public <E extends PhysicObject> List<PhysicObject> getActorsByType(List<Class<E>> allowedTypes, List<PhysicObject> ignored) {
+
+        if (allowedTypes == null) {
+            allowedTypes = new ArrayList<Class<E>>(0);
+        }
+
+        final List<PhysicObject> result = new ArrayList<PhysicObject>();
+
+        for (PhysicObject obj : actors) {
+            if (!ignored.contains(obj)) {
+                if (isClassAllowed(allowedTypes, obj.getClass())) {
+                    result.add(obj);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    public  <E extends PhysicObject> E getClosestActor(Vector2f center, Float viewSize, List<Class<E>> allowedTypes, List<PhysicObject> ignored) {
         if (center == null || viewSize == null) {
             throw new IllegalArgumentException("All params are required!");
         }
 
         if (allowedTypes == null) {
-            allowedTypes = new ArrayList<Class<? extends PhysicObject>>(0);
+            allowedTypes = new ArrayList<Class<E>>(0);
         }
 
-        PhysicObject closest = null;
+        E closest = null;
         viewSize = viewSize * 1.3f; //ads 30% to view
         Float closestDis = null;
 
@@ -203,7 +234,7 @@ public class Engine {
                 float dst = obj.getPosition().distance(center);
                 if (isClassAllowed(allowedTypes, obj.getClass()) && dst < viewSize) {
                     if (closest == null || dst < closestDis) {
-                        closest = obj;
+                        closest = (E) obj;
                         closestDis = dst;
                     }
                 }
@@ -213,9 +244,9 @@ public class Engine {
         return closest;
     }
 
-    private boolean isClassAllowed(List<Class<? extends PhysicObject>> allowedTypes, Class<? extends PhysicObject> targetClass) {
+    private <E extends PhysicObject> boolean isClassAllowed(List<Class<E>> allowedTypes, Class targetClass) {
 
-        for (Class<? extends PhysicObject> ori : allowedTypes) {
+        for (Class<E> ori : allowedTypes) {
             if (ori.isAssignableFrom(targetClass)) {
                 return true;
             }
@@ -235,14 +266,16 @@ public class Engine {
         this.deltaTime = deltaTime;
         removeDeadObjects();
 
+        executeActions();
+
         final List<PhysicObject> fullList = new ArrayList<PhysicObject>();
 
         discoverActors(fullList, actors);
 
         for (PhysicObject obj : fullList) {
-            
+
             obj.update(deltaTime);
-            
+
             resolveImpact(obj, fullList);
 
             /**
@@ -368,6 +401,25 @@ public class Engine {
 
     }
 
+    private void executeActions() {
+        long now = System.currentTimeMillis();
+        List<Action> toRemove = new ArrayList<Action>();
+        for (Action ac : actions) {
+            if (!ac.isExecuted()) {
+                if (ac.getWhenExecute() < now) {
+                    ac.getAction().run();
+                    ac.setExecuted(true);
+                    toRemove.add(ac);
+                }
+            } else {
+                toRemove.add(ac);
+            }
+        }
+
+        actions.removeAll(toRemove);
+
+    }
+
     private Vector2f calculateSteering(SelfOperatedObject obj) {
         return obj.getSteering() != null ? obj.getSteering().calculate() : new Vector2f();
     }
@@ -381,19 +433,22 @@ public class Engine {
         for (Force force : forces) {
 
             final Vector2f forceField = new Vector2f(objA.getPosition()).sub(force.getPosition());
-            final float dist = forceField.length();
 
-            if (dist > 3000) { // 3 KM 
-                continue; // Ignore objects that is too far away.
+            if (forceField.length() > 0f) { // avoid NAN
+                final float dist = forceField.length();
+
+                if (dist > 3000) { // 3 KM
+                    continue; // Ignore objects that is too far away.
+                }
+
+                final float intensity = objA.getMass() * force.getMass();
+
+                final float distSqr = dist * dist;
+
+                forceField.normalize();
+                forceField.mul(intensity / distSqr);
+                result.sub(forceField);
             }
-
-            final float intensity = objA.getMass() * force.getMass();
-
-            final float distSqr = dist * dist;
-
-            forceField.normalize();
-            forceField.mul(intensity / distSqr);
-            result.sub(forceField);
         }
 
         return result;
@@ -425,6 +480,7 @@ public class Engine {
             }
 
         }
+
     }
 
     public float getDeltaTime() {
